@@ -1,14 +1,14 @@
 import os
 import sys
+import csv
 import time
 import psutil
-import itertools
+import config
 from prettytable import PrettyTable
 from contextlib import redirect_stdout
 from datetime import datetime
 from main import clear_screen
 from main import print_stuff
-import config
 
 
 class Logger:
@@ -45,32 +45,12 @@ def display_title(type, status):
 def horodatage():
     return datetime.now()
 
-def format_time(seconds):
-    intervals = [
-        ('years', 31536000),
-        ('months', 2592000),
-        ('weeks', 604800),
-        ('days', 86400),
-        ('hours', 3600),
-        ('minutes', 60),
-        ('seconds', 1),
-        ('milliseconds', 0.001),
-    ]
-    
-    result = []
-    for name, count in intervals:
-        value = seconds // count
-        if value:
-            seconds -= value * count
-            result.append(f"{int(value)} {name.rstrip('s') if value == 1 else name}")
-            
-    return ', '.join(result)
-
-def work_estimation(n_actions):
-    total_combinations = (2 ** n_actions) - 1
-    estimated_time = total_combinations * 0.00000568
-    formatted_time = format_time(estimated_time)
-    return total_combinations, estimated_time, formatted_time
+def format_combinations(combinations):
+    if combinations > 999999999999:
+        combinations = format(combinations, ".2e")
+    elif combinations > 999999 and combinations <= 999999999999:
+        combinations = f"{combinations:,}".replace(',', ' ')
+    return combinations
 
 def window_width(table):
     table_str = table.get_string()
@@ -81,58 +61,106 @@ def window_width(table):
         os.system(cmd)
         print_stuff(config.CONSOLE_CONTENT)
 
-def print_stuff_results(combinations, anomalies, estimated_time, start_time, end_time):
-    # Affiche les 3 meilleurs résultats
-    print_stuff("\n3 meilleus achats :")
-    my_table = PrettyTable(["ID", "Profit"])
-    
-    for i, (combination, profit) in enumerate(combinations[:3], start=1):
-        ids = ", ".join(f"id#{action['id'][-4:]}" for action in combination)
-        formatted_profit = f"{profit:.2f}€"
-        my_table.add_row([ids, formatted_profit])
+def chunk_ids(ids_list, chunk_size):
+    """Divise la liste d'IDs en sous-listes de taille maximale `chunk_size`."""
+    for i in range(0, len(ids_list), chunk_size):
+        yield ids_list[i:i + chunk_size]
+
+def print_results(csv_file, combination, total_combinations, anomalies, start_time, end_time):
+    # Affiche le meilleur résultat
+    action_set = os.path.basename(csv_file) 
+    print_stuff(f"\nMeilleur achat pour {action_set} :")
+    my_table = PrettyTable(["Combinaison", "Coût", "Profit"])
+    #ids = ", ".join(f"{action['id'][-4:]}" for action in combination[0])
+    combination_cost = f"{combination[1]:.2f}€"
+    combination_profit = f"{combination[2]:.2f}€"
+    ids_list = [action['id'][-4:] for action in combination[0]]
+
+    for index, chunk in enumerate(chunk_ids(ids_list, 13)):
+        ids = ", ".join(chunk)
+        if index == 0:
+            my_table.add_row([ids, combination_cost, combination_profit])
+        else:
+            my_table.add_row([ids, "", ""])  # Lignes supplémentaires sans coût ni profit
     
     window_width(my_table)
     print_stuff(my_table)
-    
-    my_table = PrettyTable(["ID", "Profit"])
-    # Affiche les 3 pires résultats
-    print_stuff("\n3 pires achats :")
-    for i, (combination, profit) in enumerate(reversed(combinations[-3:]), start=1):
-        ids = ", ".join(f"id#{action['id'][-4:]}" for action in combination)
-        formatted_profit = f"{profit:.2f}€"
-        my_table.add_row([ids, formatted_profit])
-    
-    window_width(my_table)
-    print_stuff(my_table)
-    if len(anomalies) > 0:
-        print_stuff('\n' + 'Anomalies :\n' + str(anomalies))
-    else:
-        print_stuff('\n' + 'Aucune anomalie trouvée.')
-    print_stuff(f'Parmis {len(combinations)} combinaisons valides.')
     
     # Horodatage de fin + process memoire
+    if len(anomalies) > 0:
+        print_stuff(f"\nAnomalies détectées       : {len(anomalies)}")
+    else:
+        print_stuff("\nAucune anomalie détectée.")
     process = psutil.Process()
+    print_stuff(f"Combinaisons possibles    : {total_combinations}")
     print_stuff(f"Utilisation de la mémoire : {process.memory_info().rss / (1024 * 1024):.2f} Mo")
-    print_stuff("Début du script : " + start_time.strftime("%Y-%m-%d %H:%M:%S"))
-    print_stuff("Fin du script   : " + end_time.strftime("%Y-%m-%d %H:%M:%S"))
-    print_stuff(f"Temps d'exécution estimé : {estimated_time}")
-    print_stuff(f"Temps d'exécution réel   : {end_time - start_time}")
+    print_stuff("Début du script           : " + start_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print_stuff("Fin du script             : " + end_time.strftime("%Y-%m-%d %H:%M:%S"))
+    print_stuff(f"Temps d'exécution         : {end_time - start_time}\n")
+
+def csv_structure_check(filepath):
+    expected_header = ['name', 'price', 'profit']
     
-def calculate_profit(combination):
-    total_cost = sum(action['cost'] for action in combination)
-    total_profit = sum(action['cost'] * action['profit'] for action in combination)
-    return total_cost, total_profit
+    try:
+        with open(filepath, 'r') as file:
+            reader = csv.reader(file)
+            header = next(reader)
+            
+            if header != expected_header:
+                print("Le dataset n'est pas conforme, en-tête name, price, profit attendu.")
+                choice = input("Appuyez sur entrée pour revenir au menu. ")
+                return False
+        return True
+    
+    except FileNotFoundError:
+        print(f"Erreur : Le fichier '{filepath}' est introuvable.")
+        return False
 
-def combinations_library(actions):
-    # Liste pour stocker les combinaisons valides avec leur bénéfice
-    combinations = []
+    except Exception as e:
+        print(f"Erreur lors de la vérification du fichier CSV : {e}")
+        return False
 
-    # Parcourir toutes les combinaisons possibles
-    for r in range(1, len(actions) + 1):
-        for combination in itertools.combinations(actions, r):
-            total_cost, total_profit = calculate_profit(combination)
-            if total_cost <= config.MAX_BUDGET:
-                combinations.append((combination, total_profit))
+def calculate_average_profit(actions):
+    total_profit = sum(action['profit'] for action in actions)
+    average_profit = total_profit / len(actions) if actions else 0
+    return average_profit
 
-    # Trier les combinaisons par profit décroissant
-    return sorted(combinations, key=lambda x: x[1], reverse=True)
+def calculate_min_budget(average_profit):
+    min_budget = config.MAX_BUDGET - (config.MAX_BUDGET * average_profit / 100)
+    return min_budget
+
+def print_other_best(best_combinations):
+    print("Autres combinaisons trouvées :")
+    for i, (combination, cost, profit) in enumerate(best_combinations[:10], start=1):
+        print(f"Coût : {cost:.2f}€ | Profit : {profit:.2f}€")
+    
+    print("\n")
+
+def read_csv(filepath):
+    # Lecture du CSV et remplissage de l'array actions
+    actions = []
+    anomalies = []
+    
+    with open(filepath, 'r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            name = row['name']
+            price = float(row['price'])
+            profit = float(row['profit'])
+            
+            # Ajouter à la liste seulement les données normales
+            if price > 0 and profit > 0:
+                actions.append({
+                    'id': name,
+                    'cost': price,
+                    'profit': (profit / 100) * price
+                })
+            else:
+                anomalies.append({
+                    'id': name,
+                    'cost': price,
+                    'profit': profit
+                })
+    
+    actions = sorted(actions, key=lambda action: action['profit'], reverse=True)
+    return actions, anomalies

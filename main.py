@@ -1,10 +1,17 @@
 from modules import bruteforce
-from modules import optimized
+from modules import optimized_greedy
+from modules import optimized_dynamic
+from modules import optimized_dynamic_hybrid
 import traceback
+import argparse
 import os
+import sys
 import random
 import config
 
+
+# args must be :
+# bruteforce / optimized, "filepath", max_money
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -45,17 +52,16 @@ def print_stuff_shared_menu(type):
     print_stuff("\nAlgoInvest&Trade")
     print_stuff("Optimisation d'achat d'actions")
     print_stuff(f'\n{type} Menu :')
-    print_stuff("1. Dataset 0")
-    print_stuff("2. Dataset 1")
-    print_stuff("3. Dataset 2")
-    print_stuff(f'4. Edit Max Actions ({config.MAX_ACTIONS})')
-    print_stuff(f'5. Edit Max Budget ({config.MAX_BUDGET}€)')
+    print_stuff("1. Dataset 1 (20 actions set)")
+    print_stuff("2. Dataset 2 (1000 actions set)")
+    print_stuff("3. Dataset 3 (1000 actions set)")
+    print_stuff(f'4. Edit Max Budget ({config.MAX_BUDGET}€)')
+    print_stuff("5. Return to previous menu")
 
 def bruteforce_menu():
     wrong_choice = False
     while True:
-        print_stuff_shared_menu("Bruteforce")
-        print_stuff("6. Return to previous menu")
+        print_stuff_shared_menu("Bruteforce")  
         
         if wrong_choice:
             wrong_choice = False
@@ -64,31 +70,27 @@ def bruteforce_menu():
             choice = input("Votre choix : ")
 
         if choice == "1":
-            file_path = "data/dataset0_Python+P7.csv"
-            bruteforce.get_best_combinations(file_path)
+            file_path = "data/dataset1.csv"
         elif choice == "2":
-            file_path = "data/dataset1_Python+P7.csv"
-            bruteforce.get_best_combinations(file_path)
+            file_path = "data/dataset2.csv"
         elif choice == "3":
-            file_path = "data/dataset2_Python+P7.csv"
-            bruteforce.get_best_combinations(file_path)
+            file_path = "data/dataset3.csv"
         elif choice == "4":
-            new_value = option_input("Actions")
-            config.MAX_ACTIONS = new_value
-        elif choice == "5":
             new_value = option_input("Budget")
             config.MAX_BUDGET = new_value
-        elif choice == "6":
+        elif choice == "5":
             break
         else:
             wrong_choice = True
+
+        if choice in ["1", "2", "3"]:
+            bruteforce.get_best_combinations(file_path)
+
     
-def optimized_menu():
+def optimized_menu(type):
     wrong_choice = False
     while True:
         print_stuff_shared_menu("Optimized")
-        print_stuff(f'6. Edit Profit Threshold ({config.THRESHOLD * 100} %)')
-        print_stuff("7. Return to previous menu")
         
         if wrong_choice:
             wrong_choice = False
@@ -97,29 +99,26 @@ def optimized_menu():
             choice = input("Votre choix : ")
         
         if choice == "1":
-            file_path = "data/dataset0_Python+P7.csv"
-            optimized.get_best_combinations(file_path)
+            file_path = "data/dataset1.csv"
         elif choice == "2":
-            file_path = "data/dataset1_Python+P7.csv"
-            optimized.get_best_combinations(file_path)
+            file_path = "data/dataset2.csv"
         elif choice == "3":
-            file_path = "data/dataset2_Python+P7.csv"
-            optimized.get_best_combinations(file_path)
+            file_path = "data/dataset3.csv"
         elif choice == "4":
-            new_value = option_input("Actions")
-            config.MAX_ACTIONS = new_value
-        elif choice == "5":
             new_value = option_input("Budget")
-            config.MAX_BUDGET = new_value
-        elif choice == "6":
-            new_value = option_input("Threshold")
-            config.THRESHOLD = new_value / 100        
-        elif choice == "7":
+            config.MAX_BUDGET = new_value      
+        elif choice == "5":
             break
         else:
             wrong_choice = True
+        
+        if choice in ["1", "2", "3"]:
+            if type == 'optimized':
+                optimized_greedy.get_best_combinations(file_path)
+            else:
+                optimized_dynamic_hybrid.get_best_combinations(file_path)
 
-def main():   
+def main_menu():
     wrong_choice = False
     while True:
         clear_screen()
@@ -127,13 +126,14 @@ def main():
         print_stuff("Optimisation d'achat d'actions")
         print_stuff("\nMain Menu :")
         print_stuff("1. Bruteforce")
-        print_stuff("2. Optimized")
+        print_stuff("2. Optimized (greedy)")
+        print_stuff("3. Dynamic (knapsack)")
         if config.LOGS:
-            print_stuff("3. Deactivate Logs")
+            print_stuff("4. Deactivate Logs")
         else:
-            print_stuff("3. Activate Logs")
-        print_stuff(f'4. Console theme ({config.FAVORITE_COLOR})')
-        print_stuff("5. Quitter")
+            print_stuff("4. Activate Logs")
+        print_stuff(f'5. Console theme ({config.FAVORITE_COLOR})')
+        print_stuff("6. Quitter")
         
         if wrong_choice:
             wrong_choice = False
@@ -144,23 +144,109 @@ def main():
         if choice == "1":
             bruteforce_menu()
         elif choice == "2":
-            optimized_menu()
+            optimized_menu('optimized')
         elif choice == "3":
-            config.LOGS = not config.LOGS
+            optimized_menu('dynamic')
         elif choice == "4":
-            backgrounds = ['0', '8', '1', '3']
-            foregrounds = ['4','5','6','7','9','a','b','c','d','e','f']
-            config.FAVORITE_COLOR = random.choice(backgrounds) + random.choice(foregrounds)
+            config.LOGS = not config.LOGS
+        elif choice == "5":
+            themes = ['09', '06', '07', '0b', '0f', '0a', '0e', '0c', '8e', '87', '3e', '1b', '1f']
+            config.FAVORITE_COLOR = random.choice(themes)
             cmd = f'color {config.FAVORITE_COLOR}'
             os.system(cmd)
-        elif choice == "5":
+        elif choice == "6":
             break
         else:
             wrong_choice = True
 
+def main():
+    enter_menu_msg = "Appuyez sur entrée pour être rediriger vers le menu."
+    
+    if len(sys.argv) != 4:
+        printlogo()
+        print("GUI d'algorithmes d'optimisation d'achat d'actions :")
+        input(f'{enter_menu_msg}')
+        config.GUI = True
+        main_menu()  # Appeler le menu principal
+        return
+    
+    parser = argparse.ArgumentParser(description="Script d'optimisation d'achat d'actions.")
+    parser.add_argument('methode', type=str, choices=['bruteforce', 'optimized'], 
+                        help="La méthode à utiliser pour l'optimisation (bruteforce ou optimized).")
+    parser.add_argument('filepath', type=str, 
+                        help="Le chemin vers le fichier CSV contenant les données.")
+    parser.add_argument('maxmoney', type=int, 
+                        help="Le budget maximum pour l'optimisation.")
+    parser.add_argument('logtofile', type=bool, 
+                        help="Activer ou désactiver les logs.")
+
+    try:
+        args = parser.parse_args()
+
+        # Vérifier si le fichier existe
+        if not os.path.exists(args.filepath):
+            printlogo()
+            print("Erreur : Le fichier spécifié n'existe pas.")
+            input(f'{enter_menu_msg}')
+            config.GUI = True
+            main_menu()
+            return
+
+        # Convertir les arguments en variables
+        config.MAX_BUDGET = args.maxmoney
+        config.LOGS = args.logtofile
+
+        # Appeler la méthode appropriée en fonction des arguments
+        if args.methode == 'bruteforce':
+            config.GUI = False
+            bruteforce.get_best_combinations(args.filepath, False)
+        elif args.methode == 'optimized':
+            config.GUI = False
+            optimized_greedy.get_best_combinations(args.filepath, False)
+        elif args.methode == 'dynamic':
+            config.GUI = False
+            optimized_dynamic.get_best_combinations(args.filepath, False)
+
+    except argparse.ArgumentError as e:
+        printlogo()
+        print(f"Erreur d'argument : {e}")
+        input(f'{enter_menu_msg}')
+        config.GUI = True
+        main_menu()
+
+    except SystemExit:
+        # Capture l'erreur provoquée par argparse et redirige vers le menu principal
+        printlogo()
+        input(f'{enter_menu_msg}')
+        config.GUI = True
+        main_menu()
+
+def printlogo():
+    print("")
+    print("                           ,,")
+    print("                         ,,,,")
+    print("                      ,,,,,,,         .,")
+    print("                    .,,,,,,,,      .,,,,")
+    print("                    .,,,,,,,,    .,,,,,,")
+    print("                    .,,,,,,,,  .,,,,,,,,")
+    print("                    .,,,,,,,,  ,,,,,,,,, ,,,,,")
+    print("                    .,,,,,,,,  ,,,,,,,,,  .,,,,,")
+    print("               ,,,  .,,,,,,,,  ,,,,,,,,,   ,,,,,,")
+    print("             ,,,,,  .,,,,,,,,  ,,,,,,,,,    ,,,,,.")
+    print("          .,,,,,,,  .,,,,,,,,  ,,,,,,,,,   ,,,,,,")
+    print("          ,,,,,,,,  .,,,,,,,,  ,,,,,,,,, .,,,,,,")
+    print("      .,. ,,,,,,,,  .,,,,,,,,  ,,,,,,,,,,,,,,,,")
+    print("    .,,.  ,,,,,,,,  .,,,,,,,,  ,,,,,,,,,,,,,,")
+    print("    ,,.   ,,,,,,,,  .,,,,,,,,  ,,,,,,,,,,,,.")
+    print("   ,,,    ,,,,,,,,  .,,,,,,,,  ,,,,,,,,,,")
+    print("  ,,,,    ,,,,,,,,  .,,,,,,,,,,,,,,,,,,.")
+    print("  ,,,,,   ,,,,,,,,  .,,,,,,,,,,,,,,,.")
+    print("   ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
+    print("    .,,,,,,,,,,,,,,,,,,,,,,")
+    print("         ,,,,,,,,,,, .")
+    print("")
 
 if __name__ == '__main__':
-
     try:
         cmd = 'mode 130,35'
         os.system(cmd)
