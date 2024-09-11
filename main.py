@@ -136,7 +136,7 @@ def show_help():
     print_stuff("max_money will put a limit to your wallet, default is set to 500€")
     print_stuff("log_to_file, if true, will output the printed results to zz_actions.log")
     print_stuff('example : py main.py "bruteforce" "C:/path/to/file.csv" 500 True')
-    print_stuff("\nCopyleft : Sacha Boris, 09/2024")
+    print_stuff("\nCopyleft : Sacha Boris, Main AlgoInvest&Trade Developper. 09/2024")
     printlogo()
     input(f'{enter_menu_msg}')
 
