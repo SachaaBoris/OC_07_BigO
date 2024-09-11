@@ -81,8 +81,6 @@ def bruteforce(actions, n_actions):
         reverse=True)
     return best_combination, best_combinations
 
-# Calcul du profit
-
 
 def calculate_profit(combination):
     total_cost = sum(action['cost'] for action in combination)

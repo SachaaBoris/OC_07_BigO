@@ -48,8 +48,9 @@ def knapsack_dyna_hybrid(actions):
     # Returns best_combination, best_combinations
     average_profit = shared.calculate_average_profit(actions)
     n = len(actions)
-    max_budget = config.MAX_BUDGET + 10
-    min_budget = shared.calculate_min_budget(average_profit) - 10
+    margin = 50
+    max_budget = config.MAX_BUDGET + margin
+    min_budget = shared.calculate_min_budget(average_profit) - margin
 
     dp = [0] * (max_budget + 1)  # Liste de profit possibles
     chosen_actions = [
@@ -76,7 +77,7 @@ def knapsack_dyna_hybrid(actions):
             if new_profit > dp[budget]:
                 dp[budget] = new_profit
                 chosen_actions[i][budget] = chosen_actions[i -
-                                                           1][budget - action_cost_int] + [(action_id, action_cost)]
+                    1][budget - action_cost_int] + [(action_id, action_cost)]
 
                 combination_tuple = tuple(
                     sorted(
@@ -88,7 +89,7 @@ def knapsack_dyna_hybrid(actions):
                         action_cost for _,
                         action_cost in chosen_actions[i][budget])
 
-                    if min_budget <= total_cost <= config.MAX_BUDGET:
+                    if min_budget <= total_cost <= max_budget:
                         # Ajout de la combinaison à la liste
                         dyna_combinations.append(
                             [action_id for action_id, _ in chosen_actions[i][budget]])
@@ -114,7 +115,7 @@ def knapsack_dyna_hybrid(actions):
                 total_profit += action['profit']
 
         # Ajouter la combinaison à best_combinations
-        if min_budget + 10 <= total_cost <= max_budget - 10:
+        if min_budget + margin <= total_cost <= max_budget - margin:
             best_combinations.append([combination, total_cost, total_profit])
 
     best_combinations = sorted(

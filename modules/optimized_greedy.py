@@ -67,6 +67,7 @@ def knapsack_greedy(actions):
         best_combinations,
         key=lambda x: x[2],
         reverse=True)
+
     best_combination = [chosen_actions, total_cost, total_profit]
     # Retourne la combinaison choisie, le coût total et le profit total
     return best_combination, best_combinations
