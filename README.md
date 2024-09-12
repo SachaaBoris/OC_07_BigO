@@ -22,6 +22,9 @@ Algorithme permettant d'extraire les meilleurs opportunités d'investissement à
   
 3. Démarrer le script :  
     Toujours dans la console et à la racine du script, tapez la commande : `py main.py`  
+	Vous pouvez également utiliser des arguments :  
+	"bruteforce"/"greedy"/"dynamic"(str) "filepath"(str) max_money(int) log_to_file(bool)  
+	Exemple : `py main.py "bruteforce" "C:/path/to/file.csv" 500 True`  
   
 ---  
   
