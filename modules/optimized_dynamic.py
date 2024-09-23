@@ -48,59 +48,51 @@ def knapsack_dyna_hybrid(actions):
     # Returns best_combination, best_combinations
     average_profit = shared.calculate_average_profit(actions)
     n = len(actions)
-    margin = 50
-    max_budget = config.MAX_BUDGET + margin
-    min_budget = shared.calculate_min_budget(average_profit) - margin
+    margin = 100  # Budgets de MAX_BUDGET - 100 à MAX_BUDGET + 100
+    max_budget = config.MAX_BUDGET
+    min_budget = shared.calculate_min_budget(average_profit)
+    margin_max = max_budget + margin
+    margin_min = min_budget - margin
 
-    dp = [0] * (max_budget + 1)  # Liste de profit possibles
-    chosen_actions = [
-        [[] for _ in range(
-            max_budget +
-            1)] for _ in range(
-            n +
-            1)]  # Liste d'actions choisies
+    dp = [0] * (margin_max + 1)  # Liste de profit possibles
+    chosen_actions = [[[] for _ in range(margin_max + 1)] for _ in range(n + 1)]  # Liste d'actions choisies
 
     dyna_combinations = []
     seen_combinations = set()
     tested_combinations = 0
 
+    # Obtenir une premiere liste de combinaisons approximative
     for i in range(1, n + 1):
         # Methode range() ne fonctionne pas avec un type float
-        action_cost_int = int(actions[i - 1]['cost'])
-        action_cost = actions[i - 1]['cost']
-        action_profit = actions[i - 1]['profit']
-        action_id = actions[i - 1]['id']
+        action_cost_int = int(actions[i-1]['cost'])
+        action_cost = actions[i-1]['cost']
+        action_profit = actions[i-1]['profit']
+        action_id = actions[i-1]['id']
 
-        for budget in range(max_budget, action_cost_int - 1, -1):
+        for budget in range(margin_max, action_cost_int - 1, -1):
             tested_combinations += 1
             new_profit = dp[budget - action_cost_int] + action_profit
             if new_profit > dp[budget]:
                 dp[budget] = new_profit
-                chosen_actions[i][budget] = chosen_actions[i -
-                    1][budget - action_cost_int] + [(action_id, action_cost)]
+                chosen_actions[i][budget] = chosen_actions[i-1][budget - action_cost_int] + [(action_id, action_cost)]
 
-                combination_tuple = tuple(
-                    sorted(
-                        action_id for action_id,
-                        _ in chosen_actions[i][budget]))
+                combination_tuple = tuple(sorted(action_id for action_id, _ in chosen_actions[i][budget]))
                 if combination_tuple not in seen_combinations:
                     seen_combinations.add(combination_tuple)
-                    total_cost = sum(
-                        action_cost for _,
-                        action_cost in chosen_actions[i][budget])
+                    total_cost = sum(action_cost for _, action_cost in chosen_actions[i][budget])
 
-                    if min_budget <= total_cost <= max_budget:
+                    if margin_min <= total_cost <= margin_max:
                         # Ajout de la combinaison à la liste
-                        dyna_combinations.append(
-                            [action_id for action_id, _ in chosen_actions[i][budget]])
+                        dyna_combinations.append([action_id for action_id, _ in chosen_actions[i][budget]])
 
             else:
-                chosen_actions[i][budget] = chosen_actions[i - 1][budget]
+                chosen_actions[i][budget] = chosen_actions[i-1][budget]
 
     best_combinations = []
 
     action_dict = {action['id']: action for action in actions}
 
+    # Reconstruire la précision perdue avec les data initiales
     for combination_ids in dyna_combinations:
         combination = []
         total_cost = 0
@@ -115,7 +107,7 @@ def knapsack_dyna_hybrid(actions):
                 total_profit += action['profit']
 
         # Ajouter la combinaison à best_combinations
-        if min_budget + margin <= total_cost <= max_budget - margin:
+        if min_budget <= total_cost <= max_budget:
             best_combinations.append([combination, total_cost, total_profit])
 
     best_combinations = sorted(

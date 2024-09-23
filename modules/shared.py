@@ -146,17 +146,20 @@ def calculate_min_budget(average_profit):
 
 
 def print_other_best(best_combinations):
-    print("Autres combinaisons trouvées :")
-    for i, (combination, cost, profit) in enumerate(
-            best_combinations[:10], start=1):
-        print(f"Coût : {cost:.2f}€ | Profit : {profit:.2f}€")
+    if len(best_combinations) > 1:
+        print("Autres combinaisons trouvées :")
+        for i, (combination, cost, profit) in enumerate(
+            best_combinations[1:11], start=1):
+            print(f"Coût : {cost:.2f}€ | Profit : {profit:.2f}€")
 
-    print("\n")
+        print("\n")
+    else:
+        print("Aucune autre combinaison trouvé.\n")
 
 
 def read_csv(filepath):
     # Lecture du CSV et remplissage de l'array actions
-    actions = []
+    file_actions = []
     anomalies = []
 
     with open(filepath, 'r') as file:
@@ -166,12 +169,12 @@ def read_csv(filepath):
             price = float(row['price'])
             profit = float(row['profit'])
 
-            # Ajouter à la liste seulement les données normales
+            # Ajouter à la liste seulement les données "normales"
             if price > 0 and profit > 0:
-                actions.append({
+                file_actions.append({
                     'id': name,
                     'cost': price,
-                    'profit': (profit / 100) * price
+                    'profit': profit
                 })
             else:
                 anomalies.append({
@@ -180,8 +183,19 @@ def read_csv(filepath):
                     'profit': profit
                 })
 
-    actions = sorted(
-        actions,
+    # Trier les actions par profit (descendant)
+    file_actions = sorted(
+        file_actions,
         key=lambda action: action['profit'],
         reverse=True)
+
+    actions = []
+    # Remplacer le profit en pourcentage par le profit réel
+    for action in file_actions:
+        actions.append({
+            'id': action['id'],
+            'cost': action['cost'],
+            'profit': (action['profit'] / 100) * action['cost']
+        })
+    
     return actions, anomalies
